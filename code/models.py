@@ -511,3 +511,234 @@ def copy_files_to_images(training_df, test_df, activation_sample, root_dir):
     else:
         print(f"model_diagnostics.png not found")
 
+def create_scenario_docker_files(root_dir):
+    print("Creating scenario docker-compose files...")
+    
+    ann_scenario_dir = root_dir / 'scenarios' / 'apply_annSolution_german_car' / 'x86_64'
+    ann_scenario_dir.mkdir(parents=True, exist_ok=True)
+    
+    ann_compose_content = """services:
+  knowledge:
+    image: hassanimam7214/knowledgebase_german_car
+    volumes:
+      - ai_system_new:/tmp
+
+  activation:
+    image: hassanimam7214/activationbase_german_car
+    volumes:
+      - ai_system_new:/tmp
+
+  code:
+    image: hassanimam7214/codebase_german_car
+    volumes:
+      - ai_system_new:/tmp
+
+volumes:
+  ai_system_new:
+    external: true
+"""
+    
+    with open(ann_scenario_dir / 'docker-compose.yml', 'w') as f:
+        f.write(ann_compose_content)
+    
+    print(f"ANN scenario docker-compose: {ann_scenario_dir.relative_to(root_dir)}")
+    
+    ols_scenario_dir = root_dir / 'scenarios' / 'apply_olsSolution_german_car' / 'x86_64'
+    ols_scenario_dir.mkdir(parents=True, exist_ok=True)
+    
+    ols_compose_content = """services:
+  knowledge:
+    image: hassanimam7214/knowledgebase_german_car
+    volumes:
+      - ai_system_new:/tmp
+
+  activation:
+    image: hassanimam7214/activationbase_german_car
+    volumes:
+      - ai_system_new:/tmp
+
+  code:
+    image: hassanimam7214/codebase_german_car
+    volumes:
+      - ai_system_new:/tmp
+
+volumes:
+  ai_system_new:
+    external: true
+"""
+    
+    with open(ols_scenario_dir / 'docker-compose.yml', 'w') as f:
+        f.write(ols_compose_content)
+    
+    print(f"OLS scenario docker-compose: {ols_scenario_dir.relative_to(root_dir)}")
+
+def verify_data_formats(root_dir):
+    print("Verifying data formats...")
+    
+    try:
+        train_path = root_dir / 'output' / 'training_data.csv'
+        train_df = pd.read_csv(train_path)
+        train_has_price = 'price' in train_df.columns
+        train_feature_cols = [col for col in train_df.columns if col != 'price']
+        
+        act_path = root_dir / 'output' / 'activation_data.csv'
+        act_df = pd.read_csv(act_path)
+        act_has_price = 'price' in act_df.columns
+        act_feature_cols = list(act_df.columns)
+        
+        print(f"File verification:")
+        print(f"Training data: {len(train_df):,} rows, {train_df.shape[1]} columns")
+        print(f"Has price column: {train_has_price} (should be True)")
+        print(f"Activation data: {len(act_df):,} rows, {act_df.shape[1]} columns")
+        print(f"Has price column: {act_has_price} (should be False)")
+        
+        if set(train_feature_cols) == set(act_feature_cols):
+            print(f"Feature columns match between training and activation data!")
+            print(f"Features: {len(train_feature_cols)}")
+        else:
+            print(f"Feature columns DO NOT match!")
+            train_only = set(train_feature_cols) - set(act_feature_cols)
+            act_only = set(act_feature_cols) - set(train_feature_cols)
+            if train_only:
+                print(f"In training only: {train_only}")
+            if act_only:
+                print(f"In activation only: {act_only}")
+            
+        required_files = [
+            root_dir / 'output' / 'joint_data_collection.csv',
+            root_dir / 'output' / 'training_data.csv',
+            root_dir / 'output' / 'test_data.csv',
+            root_dir / 'output' / 'activation_data.csv',
+            root_dir / 'output' / 'currentAiSolution.pkl',
+            root_dir / 'output' / 'currentOlsSolution.pkl',
+            root_dir / 'output' / 'scaler.pkl',
+            root_dir / 'output' / 'model_diagnostics.png'
+        ]
+        
+        print(f"Checking all output files exist:")
+        all_exist = True
+        for file_path in required_files:
+            exists = file_path.exists()
+            status = "✓" if exists else "✗"
+            print(f"{status} {file_path.relative_to(root_dir)}")
+            if not exists:
+                all_exist = False
+        
+        return all_exist
+        
+    except Exception as e:
+        print(f"Verification failed: {e}")
+        return False
+
+def main():
+    print("=" * 70)
+    print("GERMAN USED CAR PRICE PREDICTION - FINAL PROJECT")
+    print("University of Potsdam - AI-CPS Compliant")
+    print("=" * 70)
+    
+    print("[1] DETERMINING ROOT DIRECTORY")
+    print("-" * 50)
+    root_dir = get_root_directory()
+    
+    print("[2] CREATING AI-CPS DIRECTORY STRUCTURE")
+    print("-" * 50)
+    create_directories(root_dir)
+    
+    print("[3] LOADING DATA")
+    print("-" * 50)
+    df = load_data(root_dir)
+    
+    print("[4] CLEANING DATA")
+    print("-" * 50)
+    df_clean, initial_count, cleaned_count, cleaning_percentage = clean_data(df)
+    df = df_clean
+    
+    print("[5] ENGINEERING FEATURES")
+    print("-" * 50)
+    X, y, y_original, encoded_features = engineer_features(df)
+    
+    print("[6] SPLITTING AND SCALING DATA")
+    print("-" * 50)
+    (X_train, X_test, y_train, y_test, y_train_orig, y_test_orig,
+     X_train_scaled, X_test_scaled, scaler) = split_and_scale_data(X, y, y_original)
+    
+    scaler_path = root_dir / 'output' / 'scaler.pkl'
+    with open(scaler_path, 'wb') as f:
+        pickle.dump(scaler, f)
+    print(f"Scaler saved: {scaler_path.relative_to(root_dir)}")
+    
+    print("[7] SAVING CSV FILES")
+    print("-" * 50)
+    training_df, test_df, activation_sample = save_csv_files(
+        X, y_original, X_train, y_train_orig, X_test, y_test_orig, 
+        encoded_features, root_dir
+    )
+    
+    print("[8] TRAINING OLS MODEL")
+    print("-" * 50)
+    ols_model, ols_mae, ols_rmse, ols_r2, y_pred_ols = train_ols_model(
+        X_train_scaled, y_train, X_test_scaled, y_test_orig, root_dir
+    )
+    
+    print("[9] TRAINING ANN MODEL")
+    print("-" * 50)
+    ann_model, ann_mae, ann_rmse, ann_r2, y_pred_ann = train_ann_model(
+        X_train_scaled, y_train, X_test_scaled, y_test_orig, root_dir
+    )
+    
+    print("[10] CREATING VISUALIZATIONS")
+    print("-" * 50)
+    create_visualizations(y_test_orig, y_pred_ols, y_pred_ann, 
+                         ols_r2, ann_r2, ols_mae, ann_mae, root_dir)
+    create_complete_comparison_plot(ols_mae, ols_rmse, ols_r2, ann_mae, ann_rmse, ann_r2, root_dir)
+
+    
+    print("[11] COPYING TO DOCKER DIRECTORIES")
+    print("-" * 50)
+    copy_files_to_images(training_df, test_df, activation_sample, root_dir)
+    
+    print("[12] CREATING SCENARIO DOCKER FILES")
+    print("-" * 50)
+    create_scenario_docker_files(root_dir)
+    
+    print("[13] FINAL VERIFICATION")
+    print("-" * 50)
+    verification_passed = verify_data_formats(root_dir)
+    
+    print("=" * 70)
+    print("PROJECT COMPLETED SUCCESSFULLY!")
+    print("=" * 70)
+    
+    print("PERFORMANCE SUMMARY:")
+    print("-" * 50)
+    print(f"{'Metric':<15} {'OLS':<15} {'ANN':<15} {'Winner':<10}")
+    print(f"{'MAE (€)':<15} {ols_mae:<15.0f} {ann_mae:<15.0f} {'ANN' if ann_mae < ols_mae else 'OLS'}")
+    print(f"{'RMSE (€)':<15} {ols_rmse:<15.0f} {ann_rmse:<15.0f} {'ANN' if ann_rmse < ols_rmse else 'OLS'}")
+    print(f"{'R²':<15} {ols_r2:<15.4f} {ann_r2:<15.4f} {'ANN' if ann_r2 > ols_r2 else 'OLS'}")
+    
+    print("DATA SUMMARY:")
+    print("-" * 50)
+    print(f"Initial samples: {initial_count:,}")
+    print(f"Cleaned samples: {cleaned_count:,} ({cleaning_percentage:.1f}% retained)")
+    print(f"Training samples: {len(X_train):,}")
+    print(f"Test samples: {len(X_test):,}")
+    print(f"Features created: {len(encoded_features)}")
+    
+    print("FILES CREATED IN ROOT DIRECTORY:")
+    print("-" * 50)
+    print(f"/output/ - All CSV, models, and visualizations")
+    print(f"/images/learningBase_german_car/ - Training data")
+    print(f"/images/activationBase_german_car/ - Activation data")
+    print(f"/images/knowledgeBase_german_car/ - Models")
+    print(f"/images/codeBase_german_car/ - Visualizations")
+    print(f"/scenarios/apply_annSolution_german_car/ - ANN deployment")
+    print(f"/scenarios/apply_olsSolution_german_car/ - OLS deployment")
+    
+    if verification_passed:
+        print(f"All verifications passed! Ready for AI-CPS deployment.")
+    else:
+        print(f"Some issues detected. Please review the verification output.")
+
+if __name__ == "__main__":
+    main()
+
