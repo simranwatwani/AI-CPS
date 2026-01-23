@@ -1,0 +1,2 @@
+age,powerPS,kilometer,vehicleType_limousine,vehicleType_kleinwagen,vehicleType_kombi,vehicleType_bus,vehicleType_cabrio,vehicleType_other,fuelType_benzin,fuelType_diesel,fuelType_unknown,fuelType_lpg,fuelType_cng,fuelType_other,gearbox_manuell,gearbox_automatik,gearbox_unknown,gearbox_other,brand_volkswagen,brand_bmw,brand_mercedes_benz,brand_opel,brand_audi,brand_other
+18,118,150000,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0
