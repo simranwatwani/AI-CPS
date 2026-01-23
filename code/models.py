@@ -226,4 +226,288 @@ def train_ols_model(X_train_scaled, y_train, X_test_scaled, y_test_orig, root_di
     print(f"Model saved: {model_path.relative_to(root_dir)}")
     
     return ols_model, ols_mae, ols_rmse, ols_r2, y_pred_ols
+def train_ann_model(X_train_scaled, y_train, X_test_scaled, y_test_orig, root_dir):
+    print("Training Artificial Neural Network (ANN) model...")
+    
+    ann_model = MLPRegressor(
+        hidden_layer_sizes=(64, 32, 16),
+        activation='relu',
+        solver='adam',
+        alpha=0.001,
+        batch_size=32,
+        learning_rate='adaptive',
+        max_iter=100,
+        random_state=42,
+        verbose=False
+    )
+    
+    ann_model.fit(X_train_scaled, y_train)
+    
+    y_pred_ann_log = ann_model.predict(X_test_scaled)
+    y_pred_ann = np.expm1(y_pred_ann_log)
+    
+    ann_mae = mean_absolute_error(y_test_orig, y_pred_ann)
+    ann_rmse = np.sqrt(mean_squared_error(y_test_orig, y_pred_ann))
+    ann_r2 = r2_score(y_test_orig, y_pred_ann)
+    
+    model_path = root_dir / 'output' / 'currentAiSolution.pkl'
+    with open(model_path, 'wb') as f:
+        pickle.dump(ann_model, f)
+    
+    print(f"ANN Model Performance:")
+    print(f"MAE: €{ann_mae:,.2f}")
+    print(f"RMSE: €{ann_rmse:,.2f}")
+    print(f"R²: {ann_r2:.4f}")
+    print(f"Architecture: {ann_model.hidden_layer_sizes}")
+    print(f"Model saved: {model_path.relative_to(root_dir)}")
+    
+    return ann_model, ann_mae, ann_rmse, ann_r2, y_pred_ann
+
+def create_visualizations(y_test_orig, y_pred_ols, y_pred_ann, ols_r2, ann_r2, ols_mae, ann_mae, root_dir):
+    print("Creating diagnostic visualizations...")
+    
+    try:
+        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+        
+        axes[0, 0].scatter(y_test_orig, y_pred_ols, alpha=0.3, s=10, color='blue')
+        axes[0, 0].plot([y_test_orig.min(), y_test_orig.max()], 
+                       [y_test_orig.min(), y_test_orig.max()], 'r--', linewidth=2)
+        axes[0, 0].set_xlabel('Actual Price (€)')
+        axes[0, 0].set_ylabel('Predicted Price (€)')
+        axes[0, 0].set_title(f'OLS Model: R² = {ols_r2:.3f}')
+        axes[0, 0].grid(True, alpha=0.3)
+        
+        axes[0, 1].scatter(y_test_orig, y_pred_ann, alpha=0.3, s=10, color='green')
+        axes[0, 1].plot([y_test_orig.min(), y_test_orig.max()], 
+                       [y_test_orig.min(), y_test_orig.max()], 'r--', linewidth=2)
+        axes[0, 1].set_xlabel('Actual Price (€)')
+        axes[0, 1].set_ylabel('Predicted Price (€)')
+        axes[0, 1].set_title(f'ANN Model: R² = {ann_r2:.3f}')
+        axes[0, 1].grid(True, alpha=0.3)
+        
+        ols_errors = np.abs(y_test_orig - y_pred_ols)
+        ann_errors = np.abs(y_test_orig - y_pred_ann)
+        
+        axes[1, 0].hist(ols_errors, bins=50, alpha=0.7, color='blue', 
+                        label=f'OLS (Mean: €{ols_errors.mean():,.0f})', density=True)
+        axes[1, 0].hist(ann_errors, bins=50, alpha=0.7, color='green', 
+                        label=f'ANN (Mean: €{ann_errors.mean():,.0f})', density=True)
+        axes[1, 0].set_xlabel('Absolute Error (€)')
+        axes[1, 0].set_ylabel('Density')
+        axes[1, 0].set_title('Error Distribution Comparison')
+        axes[1, 0].legend()
+        axes[1, 0].grid(True, alpha=0.3)
+        
+        models = ['OLS', 'ANN']
+        mae_values = [ols_mae, ann_mae]
+        r2_values = [ols_r2, ann_r2]
+        
+        x = np.arange(len(models))
+        width = 0.35
+        
+        bars1 = axes[1, 1].bar(x - width/2, mae_values, width, label='MAE (€)', color='orange')
+        bars2 = axes[1, 1].bar(x + width/2, r2_values, width, label='R²', color='purple')
+        
+        axes[1, 1].set_xlabel('Model')
+        axes[1, 1].set_ylabel('Performance Metric')
+        axes[1, 1].set_title('Model Performance Comparison')
+        axes[1, 1].set_xticks(x)
+        axes[1, 1].set_xticklabels(models)
+        axes[1, 1].legend()
+        axes[1, 1].grid(True, alpha=0.3, axis='y')
+        
+        plt.suptitle('German Used Car Price Prediction - University of Potsdam', 
+                    fontsize=16, fontweight='bold', y=1.02)
+        
+        plt.tight_layout()
+        
+        output_path = root_dir / 'output' / 'model_diagnostics.png'
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        print(f"Diagnostic plots saved: {output_path.relative_to(root_dir)}")
+        
+    except Exception as e:
+        print(f"Visualization error: {e}")
+        
+
+
+def create_complete_comparison_plot(ols_mae, ols_rmse, ols_r2, ann_mae, ann_rmse, ann_r2, root_dir):
+    try:
+        print("  Creating complete metrics comparison...")
+        
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
+        
+        # Data preparation
+        metrics = ['MAE (€)', 'RMSE (€)', 'R²']
+        ols_values = [ols_mae, ols_rmse, ols_r2]
+        ann_values = [ann_mae, ann_rmse, ann_r2]
+        
+        colors = ['blue', 'green']
+        
+        # Plot 1: Side-by-side bar chart
+        x = np.arange(len(metrics))
+        width = 0.35
+        
+        bars1 = ax1.bar(x - width/2, ols_values, width, label='OLS', color=colors[0], alpha=0.7)
+        bars2 = ax1.bar(x + width/2, ann_values, width, label='ANN', color=colors[1], alpha=0.7)
+        
+        ax1.set_xlabel('Metric')
+        ax1.set_ylabel('Value')
+        ax1.set_title('Model Performance Comparison')
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(metrics)
+        ax1.legend()
+        ax1.grid(True, alpha=0.3, axis='y')
+        
+        # Add value labels
+        for bars, values in zip([bars1, bars2], [ols_values, ann_values]):
+            for bar, value in zip(bars, values):
+                height = bar.get_height()
+                label = f'€{value:,.0f}' if bar.get_x() < 2 else f'{value:.4f}'
+                ax1.text(bar.get_x() + bar.get_width()/2., height,
+                        label, ha='center', va='bottom', fontsize=9)
+        
+        # Plot 2: Improvement percentages
+        improvements = [
+            ((ols_mae - ann_mae) / ols_mae) * 100,  # MAE improvement
+            ((ols_rmse - ann_rmse) / ols_rmse) * 100,  # RMSE improvement
+            (ann_r2 - ols_r2) * 100  # R² improvement
+        ]
+        
+        colors_improvement = ['green' if imp > 0 else 'red' for imp in improvements]
+        bars_imp = ax2.bar(metrics, improvements, color=colors_improvement, alpha=0.7)
+        
+        ax2.set_xlabel('Metric')
+        ax2.set_ylabel('Improvement (%)')
+        ax2.set_title('ANN Improvement over OLS')
+        ax2.axhline(y=0, color='black', linestyle='-', linewidth=1)
+        ax2.grid(True, alpha=0.3, axis='y')
+        
+        # Add value labels
+        for bar, imp in zip(bars_imp, improvements):
+            height = bar.get_height()
+            ax2.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{imp:+.1f}%', ha='center', va='bottom' if imp >= 0 else 'top',
+                    fontsize=9, fontweight='bold')
+        
+        # Plot 3: Radar chart
+        categories = ['MAE', 'RMSE', 'R²']
+        
+        # Normalize for radar chart
+        max_mae = max(ols_mae, ann_mae)
+        max_rmse = max(ols_rmse, ann_rmse)
+        
+        ols_normalized = [
+            1 - (ols_mae / max_mae),  # Lower MAE is better
+            1 - (ols_rmse / max_rmse), # Lower RMSE is better
+            ols_r2  # Higher R² is better
+        ]
+        
+        ann_normalized = [
+            1 - (ann_mae / max_mae),
+            1 - (ann_rmse / max_rmse),
+            ann_r2
+        ]
+        
+        angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
+        angles += angles[:1]
+        
+        ols_normalized += ols_normalized[:1]
+        ann_normalized += ann_normalized[:1]
+        categories += [categories[0]]
+        
+        ax3 = plt.subplot(223, polar=True)
+        ax3.plot(angles, ols_normalized, 'o-', linewidth=2, label='OLS', color='blue')
+        ax3.fill(angles, ols_normalized, alpha=0.25, color='blue')
+        ax3.plot(angles, ann_normalized, 'o-', linewidth=2, label='ANN', color='green')
+        ax3.fill(angles, ann_normalized, alpha=0.25, color='green')
+        
+        ax3.set_xticks(angles[:-1])
+        ax3.set_xticklabels(categories[:-1])
+        ax3.set_ylim(0, 1)
+        ax3.set_title('Performance Radar Chart')
+        ax3.legend(loc='upper right')
+        ax3.grid(True)
+        
+        # Plot 4: Winner summary
+        ax4.axis('off')
+        
+        summary_text = (
+            ' PERFORMANCE WINNERS \n\n'
+            f'• R² Score: {"ANN" if ann_r2 > ols_r2 else "OLS"}\n'
+            f'  (ANN: {ann_r2:.4f} vs OLS: {ols_r2:.4f})\n\n'
+            f'• MAE: {"ANN" if ann_mae < ols_mae else "OLS"}\n'
+            f'  (ANN: €{ann_mae:,.0f} vs OLS: €{ols_mae:,.0f})\n\n'
+            f'• RMSE: {"ANN" if ann_rmse < ols_rmse else "OLS"}\n'
+            f'  (ANN: €{ann_rmse:,.0f} vs OLS: €{ols_rmse:,.0f})\n\n'
+            f' Overall Best: {"ANN" if (ann_r2 > ols_r2 and ann_mae < ols_mae) else "OLS"}'
+        )
+        
+        ax4.text(0.5, 0.5, summary_text, ha='center', va='center',
+                fontsize=12, transform=ax4.transAxes,
+                bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.5))
+        
+        plt.suptitle('Complete Model Performance Analysis', fontsize=16, fontweight='bold')
+        plt.tight_layout()
+        
+        output_path = root_dir / 'output' / 'complete_comparison.png'
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        print(f"  ✓ Complete comparison plot saved: {output_path.relative_to(root_dir)}")
+        
+    except Exception as e:
+        print(f"   Complete comparison plot error: {e}")
+        
+
+def copy_files_to_images(training_df, test_df, activation_sample, root_dir):
+    print("Copying files to Docker image directories...")
+    
+    print("1. Copying to learningBase_german_car...")
+    train_path = root_dir / 'images' / 'learningBase_german_car' / 'train' / 'training_data.csv'
+    validation_path = root_dir / 'images' / 'learningBase_german_car' / 'validation' / 'test_data.csv'
+    
+    training_df.to_csv(train_path, index=False)
+    test_df.to_csv(validation_path, index=False)
+    print(f"Training data: {train_path.relative_to(root_dir)}")
+    print(f"Columns: {training_df.shape[1]} (features + price)")
+    print(f"Test data: {validation_path.relative_to(root_dir)}")
+    print(f"Columns: {test_df.shape[1]} (features + price)")
+    
+    print("2. Copying to activationBase_german_car...")
+    activation_path = root_dir / 'images' / 'activationBase_german_car' / 'activation_data.csv'
+    activation_sample.to_csv(activation_path, index=False)
+    print(f"Activation data: {activation_path.relative_to(root_dir)}")
+    print(f"Columns: {activation_sample.shape[1]} features (NO price)")
+    print(f"Has price column: {'price' in activation_sample.columns}")
+    
+    print("3. Copying to knowledgeBase_german_car...")
+    output_dir = root_dir / 'output'
+    knowledge_dir = root_dir / 'images' / 'knowledgeBase_german_car'
+    
+    files_to_copy = [
+        ('currentAiSolution.pkl', 'currentAiSolution.pkl'),
+        ('currentOlsSolution.pkl', 'currentOlsSolution.pkl'),
+        ('scaler.pkl', 'scaler.pkl')
+    ]
+    
+    for src_file, dst_file in files_to_copy:
+        src_path = output_dir / src_file
+        dst_path = knowledge_dir / dst_file
+        if src_path.exists():
+            shutil.copy2(src_path, dst_path)
+            print(f"{src_file} → {dst_path.relative_to(root_dir)}")
+        else:
+            print(f"{src_file} not found in output directory")
+    
+    print("4. Copying visualization to codeBase_german_car...")
+    png_src = root_dir / 'output' / 'model_diagnostics.png'
+    png_dst = root_dir / 'images' / 'codeBase_german_car' / 'model_diagnostics.png'
+    
+    if png_src.exists():
+        shutil.copy2(png_src, png_dst)
+        print(f"model_diagnostics.png → {png_dst.relative_to(root_dir)}")
+    else:
+        print(f"model_diagnostics.png not found")
 
