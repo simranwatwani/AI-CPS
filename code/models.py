@@ -199,3 +199,31 @@ def save_csv_files(X, y_original, X_train, y_train_orig, X_test, y_test_orig, en
     print(f"Price column: {'price' in activation_sample.columns} (should be False)")
     
     return training_df, test_df, activation_sample
+
+def train_ols_model(X_train_scaled, y_train, X_test_scaled, y_test_orig, root_dir):
+    print("Training Ordinary Least Squares (OLS) model...")
+    
+    X_train_ols = sm.add_constant(X_train_scaled)
+    X_test_ols = sm.add_constant(X_test_scaled)
+    
+    ols_model = sm.OLS(y_train, X_train_ols).fit()
+    
+    y_pred_ols_log = ols_model.predict(X_test_ols)
+    y_pred_ols = np.expm1(y_pred_ols_log)
+    
+    ols_mae = mean_absolute_error(y_test_orig, y_pred_ols)
+    ols_rmse = np.sqrt(mean_squared_error(y_test_orig, y_pred_ols))
+    ols_r2 = r2_score(y_test_orig, y_pred_ols)
+    
+    model_path = root_dir / 'output' / 'currentOlsSolution.pkl'
+    with open(model_path, 'wb') as f:
+        pickle.dump(ols_model, f)
+    
+    print(f"OLS Model Performance:")
+    print(f"MAE: €{ols_mae:,.2f}")
+    print(f"RMSE: €{ols_rmse:,.2f}")
+    print(f"R²: {ols_r2:.4f}")
+    print(f"Model saved: {model_path.relative_to(root_dir)}")
+    
+    return ols_model, ols_mae, ols_rmse, ols_r2, y_pred_ols
+
