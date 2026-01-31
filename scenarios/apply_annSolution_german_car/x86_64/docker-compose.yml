@@ -1,0 +1,19 @@
+services:
+  knowledge:
+    image: hassanimam7214/knowledgebase_german_car
+    volumes:
+      - ai_system_new:/tmp
+
+  activation:
+    image: hassanimam7214/activationbase_german_car
+    volumes:
+      - ai_system_new:/tmp
+
+  code:
+    image: hassanimam7214/codebase_german_car
+    volumes:
+      - ai_system_new:/tmp
+
+volumes:
+  ai_system_new:
+    external: true
