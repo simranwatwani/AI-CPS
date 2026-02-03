@@ -2,7 +2,7 @@
 
 ## 🚗 Project Overview
 
-This repository implements a complete **AI-based German Used Car Price Prediction System** compliant with the AI-CPS platform framework. The project successfully demonstrates all 7 subgoals required for the course "M. Grum: Advanced AI-based Application Systems" at the University of Potsdam.
+This repository implements a complete **AI-based Used Car Price Prediction System** compliant with the AI-CPS platform framework. The project successfully demonstrates all 7 subgoals required for the course "M. Grum: Advanced AI-based Application Systems" at the University of Potsdam.
 
 ## 🎯 Performance Highlights
 
