@@ -262,6 +262,69 @@ def train_ann_model(X_train_scaled, y_train, X_test_scaled, y_test_orig, root_di
     print(f"Model saved: {model_path.relative_to(root_dir)}")
     
     return ann_model, ann_mae, ann_rmse, ann_r2, y_pred_ann
+def train_ols_model(X_train_scaled, y_train, X_test_scaled, y_test_orig, root_dir):
+    print("Training Ordinary Least Squares (OLS) model...")
+    
+    X_train_ols = sm.add_constant(X_train_scaled)
+    X_test_ols = sm.add_constant(X_test_scaled)
+    
+    ols_model = sm.OLS(y_train, X_train_ols).fit()
+    
+    y_pred_ols_log = ols_model.predict(X_test_ols)
+    y_pred_ols = np.expm1(y_pred_ols_log)
+    
+    ols_mae = mean_absolute_error(y_test_orig, y_pred_ols)
+    ols_rmse = np.sqrt(mean_squared_error(y_test_orig, y_pred_ols))
+    ols_r2 = r2_score(y_test_orig, y_pred_ols)
+    
+    model_path = root_dir / 'output' / 'currentOlsSolution.pkl'
+    with open(model_path, 'wb') as f:
+        pickle.dump(ols_model, f)
+    
+    print(f"OLS Model Performance:")
+    print(f"MAE: €{ols_mae:,.2f}")
+    print(f"RMSE: €{ols_rmse:,.2f}")
+    print(f"R²: {ols_r2:.4f}")
+    print(f"Model saved: {model_path.relative_to(root_dir)}")
+    
+    return ols_model, ols_mae, ols_rmse, ols_r2, y_pred_ols
+
+def train_ann_model(X_train_scaled, y_train, X_test_scaled, y_test_orig, root_dir):
+    print("Training Artificial Neural Network (ANN) model...")
+    
+    ann_model = MLPRegressor(
+        hidden_layer_sizes=(64, 32, 16),
+        activation='relu',
+        solver='adam',
+        alpha=0.001,
+        batch_size=32,
+        learning_rate='adaptive',
+        max_iter=100,
+        random_state=42,
+        verbose=False
+    )
+    
+    ann_model.fit(X_train_scaled, y_train)
+    
+    y_pred_ann_log = ann_model.predict(X_test_scaled)
+    y_pred_ann = np.expm1(y_pred_ann_log)
+    
+    ann_mae = mean_absolute_error(y_test_orig, y_pred_ann)
+    ann_rmse = np.sqrt(mean_squared_error(y_test_orig, y_pred_ann))
+    ann_r2 = r2_score(y_test_orig, y_pred_ann)
+    
+    model_path = root_dir / 'output' / 'currentAiSolution.pkl'
+    with open(model_path, 'wb') as f:
+        pickle.dump(ann_model, f)
+    
+    print(f"ANN Model Performance:")
+    print(f"MAE: €{ann_mae:,.2f}")
+    print(f"RMSE: €{ann_rmse:,.2f}")
+    print(f"R²: {ann_r2:.4f}")
+    print(f"Architecture: {ann_model.hidden_layer_sizes}")
+    print(f"Model saved: {model_path.relative_to(root_dir)}")
+    
+    return ann_model, ann_mae, ann_rmse, ann_r2, y_pred_ann
 
 def create_visualizations(y_test_orig, y_pred_ols, y_pred_ann, ols_r2, ann_r2, ols_mae, ann_mae, root_dir):
     print("Creating diagnostic visualizations...")
@@ -680,12 +743,22 @@ def main():
         X_train_scaled, y_train, X_test_scaled, y_test_orig, root_dir
     )
     
+    print("[8] CREATING OLS DIAGNOSTIC PLOTS")
+    print("-" * 50)
+    # Need to pass X_test_ols for leverage calculation
+    X_test_ols = sm.add_constant(X_test_scaled)
+    create_ols_diagnostic_plots(ols_model, X_test_ols, y_test_orig, y_pred_ols, root_dir)
+
     print("[9] TRAINING ANN MODEL")
     print("-" * 50)
     ann_model, ann_mae, ann_rmse, ann_r2, y_pred_ann = train_ann_model(
         X_train_scaled, y_train, X_test_scaled, y_test_orig, root_dir
     )
     
+    print("[9] CREATING ANN DIAGNOSTIC PLOTS")
+    print("-" * 50)
+    create_ann_diagnostic_plots(y_test_orig, y_pred_ann, root_dir)
+
     print("[10] CREATING VISUALIZATIONS")
     print("-" * 50)
     create_visualizations(y_test_orig, y_pred_ols, y_pred_ann, 
@@ -741,4 +814,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
