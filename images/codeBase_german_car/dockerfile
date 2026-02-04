@@ -1,0 +1,12 @@
+FROM python:3.9-slim
+
+RUN pip install --no-cache-dir numpy pandas scikit-learn
+
+RUN mkdir -p /tmp/codeBase
+
+COPY predict.py /tmp/codeBase/predict.py
+COPY Readme.md /tmp/codeBase/Readme.md
+
+WORKDIR /tmp/codeBase
+
+CMD ["python", "predict.py"]
