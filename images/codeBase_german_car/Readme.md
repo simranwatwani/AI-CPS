@@ -1,8 +1,9 @@
 ﻿# codeBase_german_car
 
 ## Ownership
-Created by: [Your Name]  
-Student ID: [Your ID]  
+## Ownership
+Created by: Simran Watwani; Syed Hasan Imam Nagvi 
+Student ID: 833289; 83279
 University of Potsdam
 
 ## Course Information
@@ -22,3 +23,4 @@ at **University of Potsdam**
 
 ## License
 This work is committed to the **AGPL-3.0 license**.
+
