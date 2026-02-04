@@ -1,8 +1,8 @@
 ﻿# activationBase_german_car
 
 ## Ownership
-Created by: [Your Name]  
-Student ID: [Your ID]  
+Created by: Simran Watwani; Syed Hasan Imam Nagvi 
+Student ID: 833289; 83279
 University of Potsdam
 
 ## Course Information
@@ -20,3 +20,4 @@ This work is committed to the **AGPL-3.0 license**.
 
 ## Contents
 - activation_data.csv: Single car sample for AI model activation
+
